@@ -1,0 +1,88 @@
+---
+title: "Modeling Disinformation & Vaccination"
+author: "Benjamin"
+date: "`r Sys.Date()`"
+output: word_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+```{r include=FALSE}
+# Load the necessary package
+library(deSolve)
+library(ggplot2)
+library(tidyr)
+
+```
+
+```{r}
+# Define the SEIRMV model
+seirmv_model <- function(time, state, parameters) {
+  with(as.list(c(state, parameters)), {
+    # Differential equations
+    dS <- -beta * S * I / N - mu * S + nu * V
+    dE <- beta * S * I / N - sigma * E
+    dI <- sigma * E - gamma * I
+    dR <- gamma * I
+    dM <- mu * S - phi * M
+    dV <- -psi * V + nu * (S + E + R)
+    
+    # Return the rates of change
+    list(c(dS, dE, dI, dR, dM, dV))
+  })
+}
+
+# Initial state values
+N <- 10000
+E_0 <- 2
+I_0 <- 1
+R_0 <- 0
+M_0 <- 0
+V_0 <- 0
+
+initial_state <- c(
+  S = N - (E_0 + I_0 + R_0 + M_0 + V_0),
+  E = E_0,
+  I = I_0,
+  R = R_0,
+  M = M_0,
+  V = V_0
+)
+
+# Example values, adjust as needed
+parameters <- c(
+  beta = 0.12,  # Transmission rate
+  sigma = 0.12,  # Rate of progression from exposed to infectious (1/latent period)
+  gamma = 0.022,  # Recovery rate (1/infectious period)
+  mu = 0.00,  # Rate of misinformation
+  phi = 0.00,  # Effect of misinformation
+  nu = 0.001,  # Rate of vaccination
+  psi = 0.001  # Effectiveness of vaccination
+)
+
+# Time points (days)
+time <- seq(0, 365, by = 1)
+
+# Solve the SEIRMV model
+out <- ode(y = initial_state, times = time, func = seirmv_model, parms = parameters)
+
+# Convert the output to a data frame
+out <- as.data.frame(out)
+
+# Plot the results
+ggplot(out, aes(x = time,y = value, color = compartment)) +
+  geom_line(aes(y = S, color = "Susceptible"), linewidth = 1) +
+  geom_line(aes(y = E, color = "Exposed"), linewidth = 1) +
+  geom_line(aes(y = I, color = "Infectious"), linewidth = 1) +
+  geom_line(aes(y = R, color = "Recovered"), linewidth = 1) +
+  geom_line(aes(y = M, color = "Misinformation"), linewidth = 1) +
+  geom_line(aes(y = V, color = "Vaccinated"), linewidth = 1) +
+  scale_color_manual(values = c("blue", "red", "yellow", "green", "orange", "purple")) +
+  labs(title = "SEIRMV model", x = "Time (days)", y = "Number of individuals")
+
+# Display the results
+print(out)
+
+```
